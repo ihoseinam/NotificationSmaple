@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -33,7 +34,9 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private val channelId = "test_chanel_id"
-    lateinit var buider:NotificationCompat.Builder
+    private lateinit var builder: NotificationCompat.Builder
+    private lateinit var notificationManager: NotificationManagerCompat
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,51 +50,58 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        val notificationManager = NotificationManagerCompat.from(this@MainActivity)
+                        notificationManager = NotificationManagerCompat.from(this@MainActivity)
                         val notificationId = Random(System.currentTimeMillis()).nextInt()
 
                         val notificationRequestPermission = rememberLauncherForActivityResult(
                             contract = ActivityResultContracts.RequestPermission()
                         ) {
                             if (it) {
-                                notificationManager.notify(notificationId,buider.build())
+                                notificationManager.notify(notificationId, builder.build())
                             } else {
                                 Toast.makeText(
                                     this@MainActivity,
-                                    "not permision",
+                                    "not permission",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
                         }
                         createNotificationChannel()
-                        val myNotifIntent =Intent(this@MainActivity,MainActivity::class.java)
-                        myNotifIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-//                        val pendingIntent =PendingIntent.getActivities(this@MainActivity,0,myNotifIntent,PendingIntent.FLAG_IMMUTABLE)
+
+                        val myNotifIntent = Intent(this@MainActivity, MainActivity::class.java)
+                        myNotifIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+                        val pendingIntent =
+                            PendingIntent.getActivity(
+                                this@MainActivity,
+                                0,
+                                myNotifIntent,
+                                PendingIntent.FLAG_IMMUTABLE
+                            )
+
+                        builder = NotificationCompat.Builder(this@MainActivity, channelId)
+                            .setSmallIcon(android.R.drawable.ic_dialog_info)
+                            .setContentTitle("You have a new message")
+                            .setContentText("This is a test message")
+                            .setShowWhen(true)
+                            .setAutoCancel(true)
+                            .setContentIntent(pendingIntent)
+                            .setPriority(NotificationCompat.PRIORITY_HIGH)
+                            .setDefaults(NotificationCompat.DEFAULT_ALL)
+                            .setFullScreenIntent(pendingIntent, true) // نمایش نوتیفیکیشن به صورت heads-up
+
                         Button(onClick = {
-                            val builder =
-                                NotificationCompat.Builder(this@MainActivity, channelId)
-                                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                                    .setContentTitle("you have new message")
-                                    .setContentText("is message test")
-                                    .setShowWhen(true)
-                                    .setAutoCancel(true)
-                                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-
-
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                                ) {
+                                if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                                     notificationManager.notify(notificationId, builder.build())
                                 } else {
                                     notificationRequestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-
                                 }
                             } else {
                                 notificationManager.notify(notificationId, builder.build())
                             }
-
                         }) {
-                            Text(text = "notiiif")
+                            Text(text = "Notify")
                         }
                     }
                 }
@@ -102,13 +112,17 @@ class MainActivity : ComponentActivity() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "test_chanel_name"
-            val channel =
-                NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH)
-            channel.description = "My Channel Description"
+            val importance = NotificationManager.IMPORTANCE_HIGH // اهمیت بالا
+            val channel = NotificationChannel(channelId, name, importance).apply {
+                description = "My Channel Description"
+                enableLights(true)
+                lightColor = Color.RED
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 500, 1000) // الگوی ویبره
+            }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
-
     }
 }
 
